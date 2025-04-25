@@ -1,13 +1,18 @@
 <div align="center">
 <h1>SpectralGPT: Spectral Remote Sensing Foundation Model</h1>
   
-This is the official repository for the paper 
+This is the **unofficial** repository adaptation for the paper 
 "_SpectralGPT: Spectral Remote Sensing Foundation Model_".  
 
 **IEEE TPAMI: (https://ieeexplore.ieee.org/document/10490262)
 
 [Danfeng Hong](https://scholar.google.com/citations?hl=en&user=n7gL0_IAAAAJ&view_op=list_works&sortby=pubdate), Bing Zhang, Xuyang Li, Yuxuan Li, Chenyu Li, Jing Yao, Naoto Yokoya, Hao Li, Pedram Ghamisi, Xiuping Jia, Antonio Plaza, Paolo Gamba, Jon Atli Benediktsson, Jocelyn Chanussot
 </div>
+
+# ITA Modifications
+## Environment
+1. [requirements.txt](requirements.txt) has been modified due to conflicts between libraries versions.
+2. Torch with Cuda 12.1 drivers can be installed using `pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu121`
 
 ## Abstract
 The foundation model has recently garnered significant attention due to its potential to revolutionize the field of visual representation learning in a self-supervised manner. While most foundation models are tailored to effectively process RGB images for various visual tasks, there is a noticeable gap in research focused on spectral data, which offers valuable information for scene understanding, especially in remote sensing (RS) applications. To fill this gap, we created for the first time a universal RS foundation model, named SpectralGPT, which is purpose-built to handle spectral RS images using a novel 3D generative pretrained transformer (GPT). Compared to existing foundation models, SpectralGPT 1) accommodates input images with varying sizes, resolutions, time series, and regions in a progressive training fashion, enabling full utilization of extensive RS big data; 2) leverages 3D token generation for spatial-spectral coupling; 3) captures spectrally sequential patterns via multi-target reconstruction; 4) trains on one million spectral RS images, yielding models with over 600 million parameters. Our evaluation highlights significant performance improvements with pretrained SpectralGPT models, signifying substantial potential in advancing spectral RS big data applications within the field of geoscience across four downstream tasks:  single/multi-label scene classification, semantic segmentation, and change detection.
