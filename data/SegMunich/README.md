@@ -1,0 +1,1 @@
+SegMunich can be downloaded [here](https://huggingface.co/datasets/Moonboy12138/SegMunich/blob/main/TUM_128.zip)

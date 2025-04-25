@@ -1,1 +1,7 @@
 models/*.pth
+
+data/OSCD/*
+!data/OSCD/README.md
+
+data/SegMunich/*
+!data/SegMunich/README.md
