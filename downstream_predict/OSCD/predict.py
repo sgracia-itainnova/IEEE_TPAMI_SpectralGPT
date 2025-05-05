@@ -6,6 +6,7 @@ import torch
 from torchvision import transforms
 from model.models_vit_tensor_CD import vit_base_patch16
 import skimage.io as io
+from OSCD_utils import patchify_image, reconstruct_from_patches
 
 import numpy as np
 from PIL import Image
@@ -29,7 +30,13 @@ def open_image(img_path):
     return img.astype(np.float32)
 
 def main():
-    palette_path = "palette.json"
+    data_path = os.path.join(os.getcwd(), "data/OSCD/Onera Satellite Change Detection dataset - Images")
+    models_path = os.path.join("./", "models")
+    palette_path = os.path.join("./", "downstream_predict", "OSCD", "palette.json")
+    
+    results_path = os.path.join("./", "results", "OSCD")
+    if not os.path.exists(results_path):
+        os.makedirs(results_path)
 
     # assert os.path.exists(weights_path), f"weights {weights_path} not found."
     # assert os.path.exists(img_path), f"image {img_path} not found."
@@ -51,7 +58,7 @@ def main():
     # delete weights about aux_classifier
     # weights_dict = torch.load(weights_path, map_location='cpu')['model']
     # load weights
-    checkpoint = torch.load('checkpoint.pth',
+    checkpoint = torch.load(os.path.join(models_path, "spectralGPT+_54_28.pth"),
                             map_location=device)
 
     checkpoint_model = {k.replace('module.', ''): v for k, v in checkpoint.items()}
@@ -62,52 +69,80 @@ def main():
     print(msg)
 
     # load image
-    image_folder_path1 = "/OSCD/I1"
-    image_folder_path2 = "/OSCD/I2"#
+    image_folder_path1 = os.path.join(data_path, "abudhabi/imgs_1_rect")
+    image_folder_path2 = os.path.join(data_path, "abudhabi/imgs_2_rect")
 
-    # 获取图片文件夹中的所有图片文件名
+    # Get all image filenames from the image folder
     image_file_names = os.listdir(image_folder_path1)
+    # Remove band B10 -> Stablished in section 2.8 [Implementation Details and Experimental Setup] of the paper
+    # Filter out the B10.tif file from the image filenames
+    image_file_names = [f for f in image_file_names if f != "B10.tif"]
 
-    # 遍历图片文件名
-    for image_file_name in image_file_names:
+
+    # Iterate over the image filenames
+    for i, image_file_name in enumerate(image_file_names):
+
         img1 = open_image(os.path.join(image_folder_path1, image_file_name))
         img2 = open_image(os.path.join(image_folder_path2, image_file_name))
 
-        kid1 = (img1 - img1.min(axis=(0, 1), keepdims=True))
-        mom1 = (img1.max(axis=(0, 1), keepdims=True) - img1.min(axis=(0, 1), keepdims=True))
-        img1 = kid1 / (mom1)
+        # Save the images on results folder
+        Image.fromarray(img1).save(os.path.join("./results/OSCD/abudhabi", "before_" + image_file_name))
+        Image.fromarray(img2).save(os.path.join("./results/OSCD/abudhabi", "after_" + image_file_name))
+        
+        if i==0: # Initialize bands object
+            img1_bands = np.expand_dims(img1, axis=2)
+            img2_bands = np.expand_dims(img2, axis=2)
+        else:
+            img1_bands = np.concatenate((img1_bands, np.expand_dims(img1, axis=2)), axis=2)
+            img2_bands = np.concatenate((img2_bands, np.expand_dims(img2, axis=2)), axis=2)
 
-        kid2 = (img2 - img2.min(axis=(0, 1), keepdims=True))
-        mom2 = (img2.max(axis=(0, 1), keepdims=True) - img2.min(axis=(0, 1), keepdims=True))
-        img2 = kid2 / (mom2)
+    kid1 = (img1_bands - img1_bands.min(axis=(0, 1), keepdims=True))
+    mom1 = (img1_bands.max(axis=(0, 1), keepdims=True) - img1_bands.min(axis=(0, 1), keepdims=True))
+    img1_bands = kid1 / (mom1)
 
+    kid2 = (img2_bands - img2_bands.min(axis=(0, 1), keepdims=True))
+    mom2 = (img2_bands.max(axis=(0, 1), keepdims=True) - img2_bands.min(axis=(0, 1), keepdims=True))
+    img2_bands = kid2 / (mom2)
 
-            # from pil image to tensor and normalize
+    # We patch the image to fit 128x128x12
+    img1_patches = patchify_image(img1_bands)
+    img2_patches = patchify_image(img2_bands)
+
+    for i, (patch_1, patch_2) in enumerate(zip(img1_patches, img2_patches)):
+
+        # from pil image to tensor and normalize
         data_transform = transforms.Compose([
                 transforms.ToTensor(),
             ])
-        img1 = data_transform(img1)
-        img1 = torch.unsqueeze(img1, dim=0)
-        img2 = data_transform(img2)
-        img2 = torch.unsqueeze(img2, dim=0)
+        patch_1 = data_transform(patch_1)
+        patch_1 = torch.unsqueeze(patch_1, dim=0)
+        patch_2 = data_transform(patch_2)
+        patch_2 = torch.unsqueeze(patch_2, dim=0)
 
-        img1 = img1.cuda()
-        img2 = img2.cuda()
+        patch_1 = patch_1.cuda()
+        patch_2 = patch_2.cuda()
 
-        model.eval()  # 进入验证模式
+        model.eval()  # Switch to evaluation mode
         with torch.no_grad():
                 t_start = time_synchronized()
-                output = model(img1.to(device),img2.to(device))
+                output = model(patch_1.to(device),patch_2.to(device))
                 t_end = time_synchronized()
                 print("inference time: {}".format(t_end - t_start))
 
                 prediction = output.argmax(1).squeeze(0)
                 prediction = prediction.to("cpu").numpy().astype(np.uint8)
                 # print(prediction)
+                if i == 0:
+                    prediction_full = np.expand_dims(prediction, axis=2)
+                else:
+                    prediction_full = np.concatenate((prediction_full, np.expand_dims(prediction, axis=2)), axis=2)
 
-                mask = Image.fromarray(prediction)
-                mask.putpalette(pallette)
-                mask.save(os.path.join("/OSCD/predict_1", image_file_name))
+    # Reconstruct the full prediction image from patches
+    prediction_full = reconstruct_from_patches(prediction_full, original_height=img1_bands.shape[0], original_width=img1_bands.shape[1])
+
+    mask = Image.fromarray(prediction_full)
+    mask.putpalette(pallette)
+    mask.save(os.path.join("./results/OSCD/abudhabi", 'mask.tif'))
 
 
 

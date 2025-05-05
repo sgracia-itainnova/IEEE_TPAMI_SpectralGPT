@@ -5,3 +5,5 @@ data/OSCD/*
 
 data/SegMunich/*
 !data/SegMunich/README.md
+
+results/*

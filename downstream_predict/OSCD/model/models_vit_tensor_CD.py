@@ -17,7 +17,7 @@ import torch.nn as nn
 # from util.logging import master_print as print
 
 from video_vit import Attention,Block,PatchEmbed
-from pos_embed import get_2d_sincos_pos_embed
+from model.pos_embed import get_2d_sincos_pos_embed
 
 from timm.models.vision_transformer import DropPath, Mlp
 
