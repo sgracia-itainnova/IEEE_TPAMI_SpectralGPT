@@ -8,7 +8,7 @@ import os
 import datetime
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
-os.environ["CUDA_VISIBLE_DEVICES"] = "4,5,6,7"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 # os.environ["CUDA_VISIBLE_DEVICES"] = "6,7"
 from util.pos_embed import interpolate_pos_embed
 import numpy as np
@@ -35,12 +35,12 @@ from model.models_vit_tensor_CD import vit_base_patch16
 from sync_batchnorm.batchnorm import convert_model
 
 # Global Variables' Definitions
-PATH_TO_DATASET = 'data/merge/'
-WEIGHT_PATH = './model/checkpoint-14.pth'  #
+PATH_TO_DATASET = 'data/OSCD/Onera Satellite Change Detection dataset - Images/'
+WEIGHT_PATH = './models/spectralGPT+_54_28.pth'  #
 IS_PROTOTYPE = False
 
-PRETRAIN = False
-BATCH_SIZE = 32
+PRETRAIN = True
+BATCH_SIZE = 16
 PATCH_SIDE = 128
 N_EPOCHS = 300
 L = 1024
@@ -166,31 +166,17 @@ elif TYPE == 4:
         # # checkpoint_model = checkpoint
         # checkpoint_model = checkpoint['model']
 
-        checkpoint = torch.load(
-            '/media/ps/sda1/LXY/SatMAE-main/SatMAE-main/SatMAE-main/experiments/pretrain/BE_sep/checkpoint-100.pth',
-            map_location='cpu')  # /media/ps/sda1/liyuxuan/change_detection/model/checkpoint-150.pth
-
-        # checkpoint_model = checkpoint
-        # checkpoint_model = {k.replace('module.', ''): v for k, v in checkpoint_model.items()}
-
-        checkpoint_model = checkpoint['model']
-
-        state_dict = net.state_dict()
-        for k in ['pos_embed', 'patch_embed.proj.weight', 'patch_embed.proj.bias', 'head.weight', 'head.bias']:
-            # for k in ['pos_embed_spatial', 'patch_embed.proj.weight', 'patch_embed.proj.bias', 'head.weight','head.bias']:
-            if k in checkpoint_model and checkpoint_model[k].shape != state_dict[k].shape:
-                print(f"Removing key {k} from pretrained checkpoint")
-                del checkpoint_model[k]
-        # for k in ['pos_embed']:
-        #     if k in checkpoint_model and checkpoint_model[k].shape != state_dict[k].shape:
-        #         print(f"Removing key {k} from pretrained checkpoint")
-        #         del checkpoint_model[k]
-        interpolate_pos_embed(net, checkpoint_model)
-
-        # load pre-trained model
+        #checkpoint = torch.load(
+        #    "models/spectralGPT+_54_28.pth",#'/media/ps/sda1/LXY/SatMAE-main/SatMAE-main/SatMAE-main/experiments/pretrain/BE_sep/checkpoint-100.pth',
+        #    map_location='cpu')  # /media/ps/sda1/liyuxuan/change_detection/model/checkpoint-150.pth
+        checkpoint = torch.load("models/spectralGPT+_54_28.pth", map_location='cpu')
+        checkpoint_model = {k.replace('module.', ''): v for k, v in checkpoint.items()}
+        # model.load_state_dict(torch.load(weights_path, map_location=device)['model'])
         net.load_state_dict(checkpoint_model, strict=False)
+        net.to(device)
         msg = net.load_state_dict(checkpoint_model, strict=False)
         print(msg)
+      
 # for n, p in net.named_parameters():
 #    if 'block' in n:
 #        p.requires_grad = False

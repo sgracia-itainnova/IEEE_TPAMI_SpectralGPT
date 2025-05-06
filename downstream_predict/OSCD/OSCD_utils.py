@@ -30,6 +30,7 @@ def patchify_image(img, patch_size=128):
     for y in range(0, new_height, patch_size):
         for x in range(0, new_width, patch_size):
             patch = padded_img[y:y + patch_size, x:x + patch_size]
+            patchito = patch[:, :, 0]
             patches.append(patch)
 
     return patches
@@ -72,5 +73,8 @@ def reconstruct_from_patches(patches_array, original_height=None, original_width
     # Crop back to original size if needed
     if original_height is not None and original_width is not None:
         reconstructed = reconstructed[:original_height, :original_width]
+
+    # Parse the image back to integers
+    reconstructed = reconstructed.astype(np.uint8)
 
     return reconstructed
